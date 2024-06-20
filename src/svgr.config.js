@@ -1,0 +1,8 @@
+module.exports = {
+    jsx: {
+      babelConfig: {
+
+      },
+    },
+  };
+  

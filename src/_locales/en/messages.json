@@ -1,0 +1,6 @@
+{
+  "extName": { "message": "CUMO (Chrome Undetection Management Overhaul)." },
+  "extDesc": {
+    "message": "Spoof time zone, geolocation, locale and user agent. Match your location data to your VPN's ip address."
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "CUMO - Chrome Undetection Management Overhaul",
+  "description": "Расширение для предотвращения цифрового отпечатка браузера, управления прокси и сокрытия расширений.",
+  "version": "1.0.0",
+  "default_locale": "en",
+  "permissions": [
+    "debugger",
+    "storage",
+    "proxy",
+    "webRequest",
+    "webRequestBlocking",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "optional_permissions": ["privacy"],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": { "service_worker": "background.bundle.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "assets/images/logo_1_128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
