@@ -87,7 +87,6 @@ const attachDebugger = (tabId: number) => {
                 'Emulation.setUserAgentOverride',
                 {
                   userAgent: storage.userAgent,
-                  acceptLanguage: storage.userAgent.split(';')[1] || '',
                   platform: storage.platform,
                 }
                 // { acceptLanguage: "en-CA" },

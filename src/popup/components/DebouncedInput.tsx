@@ -24,7 +24,7 @@ const DebouncedInput = ({
 }: DebouncedInputProps) => {
   const debouncedChangeHandler = useMemo(
     () =>
-      debounce((e) => {
+      debounce((e: ChangeEvent<HTMLInputElement>) => {
         detachDebugger();
         chrome.storage.local.set({ [name]: e.target.value });
       }, 300),
@@ -39,7 +39,7 @@ const DebouncedInput = ({
 
   return (
     <Box>
-      <Label htmlFor={name}>{title}</Label>
+      <Label htmlFor={name} sx={{ mb: '4px', lineHeight: '1.2'}}>{title}</Label>
       <Input
         name={name}
         value={value}

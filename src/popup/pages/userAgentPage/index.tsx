@@ -1,68 +1,81 @@
-import { useState, useEffect, ChangeEvent } from 'react'
-import { Box, Label, Select } from 'theme-ui'
-import Checkbox from 'popup/components/CheckBox'
-import DebouncedInput from 'popup/components/DebouncedInput'
-import userAgents from 'utils/userAgents'
-import detachDebugger from 'utils/detachDebugger'
-import Page from 'popup/components/Page'
+import { useState, useEffect, ChangeEvent } from 'react';
+import { Box, Label, Select, Flex } from 'theme-ui';
+import Checkbox from 'popup/components/CheckBox';
+import DebouncedInput from 'popup/components/DebouncedInput';
+import userAgents from 'utils/userAgents';
+import detachDebugger from 'utils/detachDebugger';
+import Page from 'popup/components/Page';
 
 interface UserAgentPageProps {
-  tab: string
+  tab: string;
 }
 
 const UserAgentPage = ({ tab }: UserAgentPageProps) => {
-  const [browserDefault, setBrowserDefault] = useState(true)
-  const [userAgentInfo, setUserAgentInfo] = useState('')
-  const [userAgent, setUserAgent] = useState('')
-  const [platform, setPlatform] = useState('')
+  const [browserDefault, setBrowserDefault] = useState(true);
+  const [userAgentInfo, setUserAgentInfo] = useState<string>('');
+  const [userAgent, setUserAgent] = useState<string>('');
+  const [platform, setPlatform] = useState<string>('');
+  const [screenResolution, setScreenResolution] = useState<string>('');
+  const [availableScreenSize, setAvailableScreenSize] = useState<string>('');
+  const [deviceMemory, setDeviceMemory] = useState<number | string>('');
+  const [hardwareConcurrency, setHardwareConcurrency] = useState<number | string>('');
 
   useEffect(() => {
     chrome.storage.local.get(
-      ['userAgentBrowserDefault', 'userAgentInfo', 'userAgent', 'platform'],
+      [
+        'userAgentBrowserDefault', 'userAgentInfo', 'userAgent', 'platform',
+        'screenResolution', 'availableScreenSize', 'deviceMemory', 'hardwareConcurrency'
+      ],
       (storage) => {
-        storage.userAgentBrowserDefault !== undefined &&
-          setBrowserDefault(storage.userAgentBrowserDefault)
-        storage.userAgentInfo && setUserAgentInfo(storage.userAgentInfo)
-        storage.userAgent && setUserAgent(storage.userAgent)
-        storage.platform && setPlatform(storage.platform)
+        if (storage.userAgentBrowserDefault !== undefined) setBrowserDefault(storage.userAgentBrowserDefault);
+        if (storage.userAgentInfo) setUserAgentInfo(storage.userAgentInfo);
+        if (storage.userAgent) setUserAgent(storage.userAgent);
+        if (storage.platform) setPlatform(storage.platform);
+        if (storage.screenResolution) setScreenResolution(storage.screenResolution);
+        if (storage.availableScreenSize) setAvailableScreenSize(storage.availableScreenSize);
+        if (storage.deviceMemory !== undefined) setDeviceMemory(storage.deviceMemory);
+        if (storage.hardwareConcurrency !== undefined) setHardwareConcurrency(storage.hardwareConcurrency);
       }
-    )
-  }, [])
+    );
+  }, []);
 
   const changeBrowserDefault = () => {
-    detachDebugger()
-    chrome.storage.local.set({
-      userAgentBrowserDefault: !browserDefault,
-    })
-    setBrowserDefault(!browserDefault)
-  }
+    detachDebugger();
+    chrome.storage.local.set({ userAgentBrowserDefault: !browserDefault });
+    setBrowserDefault(!browserDefault);
+  };
 
   const changeUserAgentInfo = async (e: ChangeEvent<HTMLSelectElement>) => {
-    detachDebugger()
-    setUserAgentInfo(e.target.value)
-    chrome.storage.local.set({
-      userAgentInfo: e.target.value,
-    })
+    detachDebugger();
+    const value = e.target.value;
+    setUserAgentInfo(value);
+    chrome.storage.local.set({ userAgentInfo: value });
 
-    if (e.target.value !== 'custom') {
-      const userAgentObj = JSON.parse(e.target.value)
-      setUserAgent(userAgentObj.value)
-      setPlatform(userAgentObj.platform)
+    if (value !== 'custom') {
+      const userAgentObj = JSON.parse(value);
+      setUserAgent(userAgentObj.value);
+      setPlatform(userAgentObj.platform);
+      setScreenResolution(userAgentObj.screenResolution);
+      setAvailableScreenSize(userAgentObj.availableScreenSize);
+      setDeviceMemory(userAgentObj.deviceMemory);
+      setHardwareConcurrency(userAgentObj.hardwareConcurrency);
       chrome.storage.local.set({
         userAgent: userAgentObj.value,
         platform: userAgentObj.platform,
-      })
+        screenResolution: userAgentObj.screenResolution,
+        availableScreenSize: userAgentObj.availableScreenSize,
+        deviceMemory: userAgentObj.deviceMemory,
+        hardwareConcurrency: userAgentObj.hardwareConcurrency
+      });
     }
-  }
+  };
 
   const changeTextInput = () => {
     if (userAgentInfo !== 'custom') {
-      setUserAgentInfo('custom')
-      chrome.storage.local.set({
-        userAgentType: 'custom',
-      })
+      setUserAgentInfo('custom');
+      chrome.storage.local.set({ userAgentType: 'custom' });
     }
-  }
+  };
 
   return (
     <Page isCurrentTab={tab === 'userAgent'} title={'User Agent'}>
@@ -89,9 +102,9 @@ const UserAgentPage = ({ tab }: UserAgentPageProps) => {
             <option value="custom">Custom</option>
             {Object.keys(userAgents).map((key) => (
               <optgroup key={key} label={userAgents[key].title}>
-                {userAgents[key].values.map((key: any) => (
-                  <option key={key.value} value={JSON.stringify(key)}>
-                    {key.title}
+                {userAgents[key].values.map((ua: any) => (
+                  <option key={ua.value} value={JSON.stringify(ua)}>
+                    {ua.title}
                   </option>
                 ))}
               </optgroup>
@@ -104,7 +117,7 @@ const UserAgentPage = ({ tab }: UserAgentPageProps) => {
           value={userAgent}
           setValue={setUserAgent}
           onChange={changeTextInput}
-          mb="12px"
+          mb="10px"
         />
         <DebouncedInput
           name="platform"
@@ -112,11 +125,48 @@ const UserAgentPage = ({ tab }: UserAgentPageProps) => {
           value={platform}
           setValue={setPlatform}
           onChange={changeTextInput}
-          mb="12px"
+          mb="10px"
         />
+        <Flex sx={{ gap: '12px', alignItems: 'flex-end' }}>
+          <DebouncedInput
+            name="screenResolution"
+            title="Screen Resolution"
+            value={screenResolution}
+            setValue={setScreenResolution}
+            onChange={changeTextInput}
+            mb="10px"
+          />
+          <DebouncedInput
+            name="availableScreenSize"
+            title="Available Screen Size"
+            value={availableScreenSize}
+            setValue={setAvailableScreenSize}
+            onChange={changeTextInput}
+            mb="10px"
+          />
+        </Flex>
+        <Flex sx={{ gap: '12px', alignItems: 'flex-end' }}>
+          <DebouncedInput
+            name="deviceMemory"
+            title="Device Memory"
+            value={deviceMemory !== undefined ? deviceMemory.toString() : ''}
+            setValue={(value) => setDeviceMemory(value ? parseInt(value.toString(), 10) : '')}
+            onChange={changeTextInput}
+            mb="10px"
+          />
+          <DebouncedInput
+            name="hardwareConcurrency"
+            title="Hardware Concurrency"
+            value={hardwareConcurrency !== undefined ? hardwareConcurrency.toString() : ''}
+            setValue={(value) => setHardwareConcurrency(value ? parseInt(value.toString(), 10) : '')}
+            onChange={changeTextInput}
+            mb="10px"
+          />
+        </Flex>
       </Box>
     </Page>
-  )
-}
+  );
+  
+};
 
 export default UserAgentPage;

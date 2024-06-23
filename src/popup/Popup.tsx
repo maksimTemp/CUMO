@@ -20,7 +20,7 @@ const Popup = () => {
 
   return (
     <ThemeProvider theme={{ ...theme, initialColorModeName: themeMode }}>
-      <Flex sx={{ height: '100%', width: '100%' }}>
+      <Flex sx={{ height: '120%', width: '100%' }}>
         <Box sx={{ m: '16px', width: '100%' }}>
           {tab === 'home' && <Logo style={{ width: '150px', height: 'auto' }} />}
           <LocationPage tab={tab} />
@@ -30,7 +30,7 @@ const Popup = () => {
         </Box>
         <Flex
           sx={{
-            minWidth: '36px',
+            minWidth: '40px',
             backgroundColor: 'primary',
             alignItems: 'center',
             flexDirection: 'column',

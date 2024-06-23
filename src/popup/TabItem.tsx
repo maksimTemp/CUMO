@@ -2,7 +2,7 @@ import React, { ReactElement } from 'react'
 import { Button } from 'theme-ui'
 
 interface IconProps {
-  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  Icon: React.ElementType;
   active?: boolean;
   onClick: () => void;
 }

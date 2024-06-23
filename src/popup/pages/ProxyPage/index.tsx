@@ -1,13 +1,15 @@
-import { useState, useEffect, ChangeEvent, useCallback } from 'react'
-import { Box, Flex, Label, Select } from 'theme-ui'
-import Page from 'popup/components/Page'
-import Checkbox from 'popup/components/CheckBox' 
-import Button from 'popup/components/Button' 
-import DebouncedInput from 'popup/components/DebouncedInput'
+import { useState, useEffect } from 'react';
+import { Box, Flex, Label, Select } from 'theme-ui';
+import Page from 'popup/components/Page';
+import Checkbox from 'popup/components/CheckBox';
+import Button from 'popup/components/Button';
+import DebouncedInput from 'popup/components/DebouncedInput';
+import { setChromeProxy, clearProxy } from 'utils/proxyUtils';
 
 interface ProxyPageProps {
   tab: string;
 }
+
 const ProxyPage = ({ tab }: ProxyPageProps) => {
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [protocol, setProtocol] = useState('direct');
@@ -19,22 +21,26 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
   useEffect(() => {
-    // Load the initial settings from storage
-    chrome.storage.local.get(
-      ['proxyEnabled', 'protocol', 'server', 'port', 'authEnabled', 'username', 'password', 'connectionStatus'],
-      (result) => {
-        setProxyEnabled(result.proxyEnabled || false);
-        setProtocol(result.protocol || 'direct');
-        setServer(result.server || '');
-        setPort(result.port || '');
-        setAuthEnabled(result.authEnabled || false);
-        setUsername(result.username || '');
-        setPassword(result.password || '');
-        setConnectionStatus(result.connectionStatus || 'disconnected');
-      }
-    );
+    chrome.storage.local.get([
+      'proxyEnabled',
+      'protocol',
+      'server',
+      'port',
+      'authEnabled',
+      'username',
+      'password',
+      'connectionStatus',
+    ], (settings) => {
+      setProxyEnabled(settings.proxyEnabled ?? false);
+      setProtocol(settings.protocol ?? 'direct');
+      setServer(settings.server ?? '');
+      setPort(settings.port ?? '');
+      setAuthEnabled(settings.authEnabled ?? false);
+      setUsername(settings.username ?? '');
+      setPassword(settings.password ?? '');
+      setConnectionStatus(settings.connectionStatus ?? 'disconnected');
+    });
   }, []);
-  
 
   const handleProxyToggle = () => {
     const newValue = !proxyEnabled;
@@ -42,10 +48,11 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
     chrome.storage.local.set({ proxyEnabled: newValue });
     if (!newValue) {
       setConnectionStatus('disconnected');
+      clearProxy();
     }
   };
 
-  const handleProtocolChange = (e: ChangeEvent<HTMLSelectElement>) => {
+  const handleProtocolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
     setProtocol(newValue);
     chrome.storage.local.set({ protocol: newValue });
@@ -57,7 +64,7 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
     chrome.storage.local.set({ authEnabled: newValue });
   };
 
-  const handleInputChange = (name: string, value: string) => {
+ const handleInputChange = (name: string, value: string) => {
     chrome.storage.local.set({ [name]: value });
     if (name === 'server') {
       const parts = value.split(':');
@@ -82,84 +89,27 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
       }
     }
   };
-  
+
+  const handleConnect = async () => {
+    const settings = {
+      protocol,
+      server,
+      port,
+      authEnabled,
+      username,
+      password,
+    };
+    await setChromeProxy(settings);
+    setConnectionStatus('connected');
+    chrome.storage.local.set({ connectionStatus: 'connected' });
+  };
 
   const handleDisconnect = () => {
     setProxyEnabled(false);
     setConnectionStatus('disconnected');
-    // Logic to clear proxy settings
-    chrome.proxy.settings.clear({ scope: 'regular' }, () => {
-      if (chrome.runtime.lastError) {
-        console.error(`Error clearing proxy: ${chrome.runtime.lastError.message}`);
-      } else {
-        console.log('Proxy cleared successfully');
-      }
-    });
+    clearProxy();
+    chrome.storage.local.set({ proxyEnabled: false, connectionStatus: 'disconnected' });
   };
-
-  const handleConnect = async () => {
-    if (proxyEnabled) {
-      const config: chrome.proxy.ProxyConfig = {
-        mode: 'fixed_servers',
-        rules: {
-          singleProxy: {
-            scheme: protocol.toLowerCase(),
-            host: server,
-            port: parseInt(port),
-          },
-          bypassList: ['<local>'],
-        },
-      };
-
-      chrome.proxy.settings.set({ value: config, scope: 'regular' }, () => {
-        if (chrome.runtime.lastError) {
-          console.error(`Error setting proxy: ${chrome.runtime.lastError.message}`);
-          setConnectionStatus('failed');
-          chrome.storage.local.set({ connectionStatus: 'failed' });
-        } else {
-          console.log('Proxy set successfully');
-          setConnectionStatus('connected');
-          chrome.storage.local.set({ connectionStatus: 'connected' });
-        }
-      });
-
-      if (authEnabled) {
-        chrome.webRequest.onAuthRequired.addListener(
-          (details, callback) => {
-            if (callback) {
-              callback({
-                authCredentials: {
-                  username: username,
-                  password: password,
-                },
-              });
-            }
-          },
-          { urls: ['<all_urls>'] },
-          ['blocking']
-        );
-      }
-    } else {
-      setConnectionStatus('failed');
-      chrome.storage.local.set({ connectionStatus: 'failed' });
-    }
-  };
-
-  
-  const checkConnection = () => {
-    return new Promise((resolve) => {
-      fetch('https://www.google.com') // URL для проверки соединения
-        .then((response) => {
-          if (response.ok) {
-            resolve(true);
-          } else {
-            resolve(false);
-          }
-        })
-        .catch(() => resolve(false));
-    });
-  };
-  
 
   const buttonAction = connectionStatus === 'connected' ? handleDisconnect : handleConnect;
   const buttonText = connectionStatus === 'connected' ? 'Disconnect' : 'Connect';
@@ -203,37 +153,31 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
           value={port}
           setValue={setPort}
           onChange={(value) => handleInputChange('port', value)}
-          type="number"
         />
         <Checkbox
-          title="Proxy Authentication"
+          title="Enable Proxy Authentication"
           onChange={handleAuthToggle}
           checked={authEnabled}
         />
-        <Box
-          sx={{
-            opacity: authEnabled ? '1' : '0.5',
-            pointerEvents: authEnabled ? 'auto' : 'none',
-          }}
-        >
-          <DebouncedInput
-            name="username"
-            title="Username"
-            value={username}
-            setValue={setUsername}
-            onChange={(value) => handleInputChange('username', value)}
-          />
-          <DebouncedInput
-            name="password"
-            title="Password"
-            value={password}
-            setValue={setPassword}
-            onChange={(value) => handleInputChange('password', value)}
-            type="password"
-          />
-        </Box>
-      </Box>
-      <Box mt={3}>
+        {authEnabled && (
+          <>
+            <DebouncedInput
+              name="username"
+              title="Username"
+              value={username}
+              setValue={setUsername}
+              onChange={(value) => handleInputChange('password', value)}
+            />
+            <DebouncedInput
+              name="password"
+              title="Password"
+              value={password}
+              setValue={setPassword}
+              onChange={(value) => handleInputChange('password', value)}
+            />
+          </>
+        )}
+        <Box mt={3}>
         <Box as="span">Connection Status: </Box>
         <Box
           as="span"
@@ -247,9 +191,9 @@ const ProxyPage = ({ tab }: ProxyPageProps) => {
       <Button mt={2} onClick={buttonAction}>
         {buttonText}
       </Button>
+      </Box>
     </Page>
   );
 };
-
 
 export default ProxyPage;
